@@ -1,0 +1,138 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+variables:
+  TF_ROOT: "${CI_PROJECT_DIR}/environment/dev"
+
+# Shared AWS login.
+# Any job that needs AWS can use:
+# extends: .aws_oidc
+.aws_oidc:
+
+  # Tell GitLab to create an AWS login token for this job.
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      # AWS checks this value before allowing access.
+      aud: sts.amazonaws.com
+
+  variables:
+    # IAM Role stored in GitLab CI/CD Variables.
+    AWS_ROLE_ARN: "${ROLE_ARN}"
+
+    # Temporary session name shown in AWS logs.
+    AWS_ROLE_SESSION_NAME: "gitlab-${CI_PROJECT_ID}-${CI_PIPELINE_ID}"
+
+    # File where we save the login token.
+    AWS_WEB_IDENTITY_TOKEN_FILE: "/tmp/gitlab-oidc-token"
+
+  before_script:
+    # Save the GitLab token into a file.
+    # Terraform will use this file to log in to AWS.
+    - printf '%s' "${GITLAB_OIDC_TOKEN}" > "${AWS_WEB_IDENTITY_TOKEN_FILE}"
+
+.terraform_init:
+  image:
+    name: hashicorp/terraform:1.15
+    entrypoint: [""]
+  before_script:
+    - terraform -chdir="${TF_ROOT}" init
+
+stages:
+  - validate
+  - plan
+  - apply
+  - destroy
+
+
+terraform_fmt:
+  stage: validate
+  image:
+    name: hashicorp/terraform:1.15
+    entrypoint: [""]
+  script:
+    - terraform fmt -check -recursive -diff
+  rules:
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+
+
+tflint:
+  stage: validate
+  image:
+    name: ghcr.io/terraform-linters/tflint:v0.64.0
+    entrypoint: [""]
+  before_script:
+    - tflint --version
+    - tflint --init
+  script:
+    - tflint --recursive --minimum-failure-severity=error --format=compact
+  rules:
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+
+
+terraform_validate:
+  stage: validate
+  extends:
+    - .aws_oidc
+    - .terraform_init
+  before_script:
+    - !reference [.aws_oidc, before_script]
+    - !reference [.terraform_init, before_script]
+  script:
+    - terraform -chdir="${TF_ROOT}" validate
+  rules:
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+
+
+terraform_plan:
+  stage: plan
+  extends:
+    - .aws_oidc
+    - .terraform_init
+  before_script:
+    - !reference [.aws_oidc, before_script]
+    - !reference [.terraform_init, before_script]
+  script:
+    - terraform -chdir="${TF_ROOT}" plan -var="db_credentials={username=\"${DB_USER}\",password=\"${DB_PASSWORD}\"}" -var="flask_app_Secret_key=${SECRET_KEY}" -out=tfplan
+  artifacts:
+    paths:
+      - "${TF_ROOT}/tfplan"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+
+terraform_apply:
+  stage: apply
+  extends:
+    - .aws_oidc
+    - .terraform_init
+  dependencies:
+    - terraform_plan
+  before_script:
+    - !reference [.aws_oidc, before_script]
+    - !reference [.terraform_init, before_script]
+  script:
+    - terraform -chdir="${TF_ROOT}" apply -input=false tfplan
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+
+terraform_destroy:
+  stage: destroy
+  extends:
+    - .aws_oidc
+    - .terraform_init
+  dependencies:
+    - terraform_plan
+  before_script:
+    - !reference [.aws_oidc, before_script]
+    - !reference [.terraform_init, before_script]
+  script:
+    - terraform -chdir="${TF_ROOT}" destroy -var="db_credentials={username=\"${DB_USER}\",password=\"${DB_PASSWORD}\"}" -var="flask_app_Secret_key=${SECRET_KEY}" -auto-approve
+  when: manual
+  manual_confirmation: "Are you sure you want to destroy the dev IaC resources?"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
