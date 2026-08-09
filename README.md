@@ -2,11 +2,13 @@
 
 ## Project Overview
 
-This project provisions a containerized three-tier AWS environment using Terraform and GitLab CI/CD.
+This project builds a 3-tier AWS environment using Terraform.
 
-The infrastructure is organized into reusable Terraform modules and separate environment directories. The development environment deploys networking, an Application Load Balancer, ECS services, Amazon ECR, Amazon RDS, AWS Secrets Manager, IAM, Route 53, and ACM.
+The application runs in containers on Amazon ECS, and GitLab CI/CD is used to validate and deploy the infrastructure.
 
-GitLab CI/CD is used to validate and deploy the Terraform infrastructure. Authentication from GitLab to AWS uses OpenID Connect (OIDC), allowing the pipeline to assume an AWS IAM role without storing long-lived AWS access keys in GitLab.
+I organized the Terraform code into modules so each part of the infrastructure is easier to manage and reuse.
+
+For authentication, GitLab connects to AWS using OIDC. This lets the pipeline assume an IAM role and use temporary credentials instead of storing AWS access keys in GitLab.
 
 ---
 
@@ -18,26 +20,27 @@ GitLab CI/CD is used to validate and deploy the Terraform infrastructure. Authen
 - [Tools and Technologies](#tools-and-technologies)
 - [Project Goals](#project-goals)
 - [Repository Structure](#repository-structure)
-- [Terraform Module Overview](#terraform-module-overview)
+- [Terraform Modules](#terraform-modules)
 - [Application Traffic Flow](#application-traffic-flow)
 - [Secrets Management](#secrets-management)
 - [GitLab CI/CD Pipeline](#gitlab-cicd-pipeline)
 - [GitLab OIDC Authentication](#gitlab-oidc-authentication)
-- [Deployment Evidence](#deployment-evidence)
 - [Screenshots](#screenshots)
-- [Skills Demonstrated](#skills-demonstrated)
+- [Skills Used](#skills-used)
 
 ---
 
 ## Architecture
 
-The project follows a three-tier architecture:
+The project uses a 3-tier design:
 
-1. **Presentation / Entry Layer** – Route 53, ACM, and an Application Load Balancer receive HTTPS traffic.
-2. **Application Layer** – Containerized application workloads run on Amazon ECS in private subnets.
-3. **Database Layer** – Amazon RDS runs in a separate private subnet tier.
+1. **Entry Layer** - Route 53, ACM, and the Application Load Balancer handle incoming HTTPS traffic.
+2. **Application Layer** - The application runs on Amazon ECS inside private subnets.
+3. **Database Layer** - Amazon RDS runs in separate private database subnets.
 
-The container image used by ECS is stored in Amazon ECR, while application and database configuration is stored in AWS Secrets Manager.
+The Docker image is stored in Amazon ECR.
+
+Application and database secrets are stored in AWS Secrets Manager.
 
 ### Architecture Flow
 
@@ -67,55 +70,50 @@ The container image used by ECS is stored in Amazon ECR, while application and d
 ECR --------------------> ECS Tasks
 
 Secrets Manager ---------> ECS Tasks
-        |
-        +----------------> Database configuration
 ```
 
 ---
 
 ## Infrastructure Design
 
-The Terraform configuration creates a layered AWS environment with public and private networking.
+The AWS environment is split between public and private subnets.
 
-- A VPC provides the network boundary for the environment.
-- Public subnets host internet-facing resources such as the Application Load Balancer.
-- A private subnet tier hosts ECS application tasks.
-- A separate private subnet tier hosts the RDS database.
-- Security groups control communication between the ALB, ECS tasks, and RDS.
-- Route 53 provides DNS for the application.
-- ACM provides the SSL/TLS certificate used by the HTTPS listener.
-- Amazon ECR stores the application container image.
-- Amazon ECS runs the containerized application.
-- AWS Secrets Manager stores database connection information and the Flask application secret.
-- IAM roles provide permissions required by ECS.
-- Terraform state is configured through the environment backend.
-- The repository includes development, staging, and production environment directories.
+- The VPC contains all of the project resources.
+- Public subnets are used by the Application Load Balancer.
+- Private application subnets are used by ECS tasks.
+- Private database subnets are used by Amazon RDS.
+- Security groups control traffic between the ALB, ECS, and RDS.
+- Route 53 handles DNS.
+- ACM provides the SSL certificate used by the load balancer.
+- ECR stores the Docker image.
+- ECS runs the application containers.
+- Secrets Manager stores database information and the Flask secret key.
+- IAM roles give ECS the permissions it needs.
+- Terraform backend configuration is stored inside each environment.
+- The repository has separate folders for dev, stage, and prod.
 
 ---
 
 ## AWS Services Used
 
-This project uses the following AWS services and resources:
-
 - Amazon VPC
-- Public subnets
-- Private application subnets
-- Private database subnets
+- Public Subnets
+- Private Subnets
 - Internet Gateway
-- NAT networking
-- Route tables
+- NAT Gateway
+- Route Tables
 - Security Groups
 - Application Load Balancer
-- Target Group
-- HTTP/HTTPS listeners
-- AWS Certificate Manager (ACM)
-- Amazon Route 53
-- Amazon Elastic Container Registry (ECR)
-- Amazon Elastic Container Service (ECS)
+- Target Groups
+- HTTP / HTTPS Listeners
+- AWS Certificate Manager
+- Route 53
+- Amazon ECR
+- Amazon ECS
 - ECS Cluster
 - ECS Task Definition
 - ECS Service
-- AWS Identity and Access Management (IAM)
+- IAM
 - AWS Secrets Manager
 - Amazon RDS
 
@@ -125,8 +123,8 @@ This project uses the following AWS services and resources:
 
 - Terraform
 - AWS
+- Docker
 - Amazon ECS
-- Docker containers
 - Amazon ECR
 - GitLab CI/CD
 - GitLab OIDC
@@ -138,20 +136,20 @@ This project uses the following AWS services and resources:
 
 ## Project Goals
 
-The main goals of this project were to:
+The main goals of this project were:
 
-- Build a three-tier AWS architecture using Terraform.
-- Organize infrastructure into reusable Terraform modules.
-- Separate application and database workloads into private subnet tiers.
-- Run a containerized application with Amazon ECS.
-- Store container images in Amazon ECR.
-- Place an Application Load Balancer in front of the ECS service.
-- Use Route 53 and ACM to provide DNS and HTTPS.
-- Store application and database configuration in AWS Secrets Manager.
-- Automate Terraform validation, planning, deployment, and destruction with GitLab CI/CD.
-- Authenticate GitLab CI/CD to AWS using OIDC instead of long-lived AWS access keys.
-- Add Terraform formatting and linting checks to the CI/CD workflow.
-- Maintain separate environment directories for development, staging, and production.
+- Build a 3-tier AWS infrastructure with Terraform.
+- Use Terraform modules instead of putting everything in one file.
+- Keep the application and database inside private subnets.
+- Run the application using ECS containers.
+- Store Docker images in ECR.
+- Put an Application Load Balancer in front of ECS.
+- Use Route 53 and ACM for DNS and HTTPS.
+- Store application and database secrets in Secrets Manager.
+- Use GitLab CI/CD for Terraform validation, plan, apply, and destroy.
+- Use OIDC so GitLab does not need permanent AWS access keys.
+- Add Terraform formatting and TFLint checks.
+- Keep separate folders for development, staging, and production.
 
 ---
 
@@ -193,40 +191,38 @@ The main goals of this project were to:
 
 ---
 
-## Terraform Module Overview
+## Terraform Modules
 
-The infrastructure is divided into reusable Terraform modules. The development environment in `environment/dev/main.tf` connects the modules together by passing outputs from one module into the inputs of another.
+The infrastructure is split into multiple Terraform modules.
+
+The `environment/dev/main.tf` file connects the modules together and passes values between them.
 
 ### Network Module
 
-The network module creates the AWS networking layer.
-
-It provides resources used by the rest of the architecture, including:
+The network module creates the main networking resources:
 
 - VPC
 - Public subnets
 - Private application subnets
 - Private database subnets
-- Internet connectivity
-- NAT networking
+- Internet Gateway
+- NAT Gateway
 - Route tables
 - Route table associations
 
-The subnet outputs are consumed by the ALB, ECS, and RDS modules.
+The subnet IDs are later used by the ALB, ECS, and RDS modules.
 
 ---
 
 ### Security Group Module
 
-The security group module creates separate security boundaries for infrastructure components.
+This module creates security groups for:
 
-Security groups are used for:
+- Application Load Balancer
+- ECS
+- RDS
 
-- Application Load Balancer traffic
-- ECS application traffic
-- Database traffic
-
-This creates a controlled traffic path between each layer of the application.
+The traffic flow is kept simple:
 
 ```text
 Internet
@@ -241,43 +237,45 @@ ECS Security Group
 RDS Security Group
 ```
 
+The ALB can send traffic to ECS, and ECS can connect to RDS.
+
 ---
 
 ### Application Load Balancer Module
 
-The ALB module creates the public entry point for the application.
+The ALB is the public entry point for the application.
 
-It receives:
+The module uses:
 
 - VPC ID
 - Public subnet IDs
-- Load balancer security group
-- Target group configuration
+- ALB security group
+- Target group settings
 - ACM certificate ARN
 
-The load balancer forwards application traffic to the ECS service through its target group.
+The load balancer receives HTTPS traffic and forwards it to the ECS service.
 
 ---
 
 ### ECS Module
 
-The ECS module runs the containerized application.
+The ECS module runs the application containers.
 
-The development environment passes the ECS module:
+It uses values such as:
 
-- ECS cluster configuration
-- Task definition configuration
+- ECS cluster settings
+- Task definition settings
 - IAM execution role
-- ECR container image
+- ECR image
 - Container configuration
-- ECS service configuration
+- ECS service settings
 - Private application subnet IDs
 - ECS security group
 - ALB target group ARN
-- Secrets Manager secret ARN
+- Secrets Manager ARN
 - AWS region
 
-The ECS service registers its running tasks with the ALB target group.
+The ECS service registers the running tasks with the ALB target group.
 
 ```text
 ALB
@@ -297,9 +295,9 @@ ECS Service
 
 ### ECR Module
 
-The ECR module creates the container registry used to store the application image.
+The ECR module creates the Docker image repository.
 
-The repository URL is passed to the ECS module so that the ECS task definition can reference the application container image.
+The application image is pushed to ECR, and ECS uses that image when starting a task.
 
 ```text
 Application Image
@@ -318,37 +316,37 @@ ECS Task Definition
 
 ### RDS Module
 
-The RDS module creates the database tier.
+The RDS module creates the database.
 
-The database is associated with:
+It uses:
 
-- Database configuration
-- Database credentials
-- Database security group
+- Database settings
+- Database username and password
+- RDS security group
 - Private database subnets
 
-The RDS endpoint and database name are passed to AWS Secrets Manager so the application can retrieve its database connection information.
+The RDS endpoint and database name are also used by Secrets Manager so the application can connect to the database.
 
 ---
 
 ### Secrets Manager Module
 
-AWS Secrets Manager stores application configuration required by the ECS workload.
+Secrets Manager stores the values the application needs at runtime.
 
-The Terraform configuration passes values including:
+This includes:
 
 - Database username
 - Database password
 - RDS endpoint
 - Database name
-- Flask application secret key
+- Flask secret key
 
-The resulting secret ARN is passed to the ECS module.
+The secret ARN is passed to the ECS module.
 
 ```text
 RDS
  |
- | endpoint / database information
+ | database information
  v
 Secrets Manager
  |
@@ -360,15 +358,17 @@ ECS Task Definition
 Application Container
 ```
 
+This keeps sensitive values outside of the Docker image.
+
 ---
 
 ### IAM Module
 
-The IAM module creates the IAM role used by the ECS workload.
+The IAM module creates the role used by ECS.
 
-The role ARN is passed into the ECS module as the task execution role.
+The role ARN is passed to the ECS task definition.
 
-This role allows ECS to perform the AWS actions required by the task definition and supporting services.
+This gives ECS permission to do things like pull the image from ECR and access the services needed by the task.
 
 ---
 
@@ -376,7 +376,7 @@ This role allows ECS to perform the AWS actions required by the task definition 
 
 The ACM module creates the SSL/TLS certificate for the application domain.
 
-The certificate ARN is passed to the Application Load Balancer so the HTTPS listener can terminate TLS connections.
+The certificate ARN is passed to the ALB HTTPS listener.
 
 ---
 
@@ -384,7 +384,7 @@ The certificate ARN is passed to the Application Load Balancer so the HTTPS list
 
 The Route 53 module creates the DNS record for the application.
 
-The module receives the ALB DNS name and ALB hosted zone ID and creates an alias pointing the application domain to the load balancer.
+The record points the domain name to the Application Load Balancer.
 
 ```text
 Application Domain
@@ -400,53 +400,55 @@ Application Domain
 
 ## Application Traffic Flow
 
-A request to the application follows this path:
+When someone opens the application, the request follows this path:
 
 ```text
 1. User opens the application domain
               |
               v
-2. Route 53 resolves the DNS record
+2. Route 53 resolves the domain
               |
               v
 3. HTTPS traffic reaches the ALB
               |
-        ACM TLS Certificate
+        ACM Certificate
               |
               v
-4. ALB forwards the request to its target group
+4. ALB sends traffic to the target group
               |
               v
-5. Target group forwards traffic to a healthy ECS task
+5. Target group sends the request to an ECS task
               |
               v
-6. Containerized application processes the request
+6. The application processes the request
               |
               v
-7. Application communicates with Amazon RDS
+7. The application connects to Amazon RDS
 ```
 
-The application tier and database tier remain inside private subnets while the Application Load Balancer provides the public entry point.
+The ECS tasks and RDS database stay inside private subnets.
+
+Only the Application Load Balancer is exposed to the internet.
 
 ---
 
 ## Secrets Management
 
-Application secrets are handled through AWS Secrets Manager.
+I use AWS Secrets Manager to store application and database values.
 
-Terraform creates the secret using values supplied to the development environment and information generated by the RDS module.
+Terraform creates the secret using the database information and application secret values.
 
-The ECS module receives the Secrets Manager ARN so that the containerized application can access the configuration it requires.
+The ECS task receives the secret ARN and uses it to access the values needed by the application.
 
-This keeps runtime application configuration separate from the container image.
+This keeps secrets separate from the Docker image and application code.
 
 ---
 
 ## GitLab CI/CD Pipeline
 
-GitLab CI/CD automates Terraform validation and infrastructure deployment.
+GitLab CI/CD is used to run Terraform.
 
-The pipeline contains four stages:
+The pipeline has four stages:
 
 ```text
 validate
@@ -455,7 +457,7 @@ apply
 destroy
 ```
 
-### Pipeline Workflow
+### Pipeline Flow
 
 ```text
 Git Push / Merge Request
@@ -489,76 +491,70 @@ Git Push / Merge Request
 
 ### Validate Stage
 
-The validation stage includes:
+The pipeline checks Terraform formatting with:
 
 ```bash
 terraform fmt -check -recursive -diff
 ```
 
-TFLint is also executed recursively to check the Terraform configuration.
-
-Terraform then runs:
+It also runs TFLint and:
 
 ```bash
 terraform validate
 ```
 
-The formatting and linting jobs run for non-default branches, while Terraform validation uses the shared AWS OIDC and Terraform initialization configuration.
+This helps catch formatting problems and Terraform configuration errors before running a plan.
 
 ---
 
 ### Plan Stage
 
-The plan job initializes Terraform and creates a saved execution plan:
+The plan job runs:
 
 ```bash
 terraform plan -out=tfplan
 ```
 
-Database credentials and the Flask application secret are supplied to Terraform through GitLab CI/CD variables.
+Database credentials and the Flask secret are passed using GitLab CI/CD variables.
 
-The resulting `tfplan` file is stored as a GitLab artifact.
+The `tfplan` file is saved as an artifact so the apply job can use the same plan.
 
 ---
 
 ### Apply Stage
 
-The apply job depends on the plan job and downloads the saved Terraform plan.
-
-It executes:
+The apply job downloads the saved plan and runs:
 
 ```bash
 terraform apply -input=false tfplan
 ```
 
-The apply stage is manual and is limited to the default branch.
+The apply job is manual and only runs from the default branch.
 
-This means the exact Terraform plan generated by the pipeline is the plan that gets applied.
+This gives me a chance to review the plan before creating or changing AWS resources.
 
 ---
 
 ### Destroy Stage
 
-The pipeline also provides a manual destroy job for the development environment.
+The pipeline also has a manual destroy job for the development environment.
 
-Before destruction, GitLab displays a manual confirmation prompt.
-
-Terraform then executes the destroy operation using the required environment variables.
+Terraform uses the required environment variables and destroys the resources when the job is manually started.
 
 ---
 
 ## GitLab OIDC Authentication
 
-GitLab authenticates to AWS using OpenID Connect.
+GitLab connects to AWS using OIDC.
 
-The pipeline requests a GitLab OIDC ID token with AWS STS as the audience:
+The basic flow looks like this:
 
 ```text
 GitLab CI Job
       |
-      | OIDC ID Token
+      | OIDC Token
       v
-AWS Security Token Service
+AWS STS
       |
       | Assume IAM Role
       v
@@ -568,7 +564,7 @@ Temporary AWS Credentials
 Terraform
 ```
 
-The IAM role ARN is supplied through the GitLab `ROLE_ARN` CI/CD variable.
+The IAM role ARN is stored in the GitLab `ROLE_ARN` CI/CD variable.
 
 The pipeline sets:
 
@@ -576,51 +572,44 @@ The pipeline sets:
 - `AWS_ROLE_SESSION_NAME`
 - `AWS_WEB_IDENTITY_TOKEN_FILE`
 
-Terraform and the AWS provider can then use the temporary role credentials during the job.
+AWS then gives the GitLab job temporary credentials.
 
-No permanent AWS access key and secret access key are required by the Terraform jobs.
-
----
-
-## Deployment Evidence
-
-Screenshots can be stored under:
-
-```text
-docs/screenshots/
-```
-
-Recommended evidence for this project:
-
-- Successful GitLab pipeline
-- Terraform formatting / validation jobs
-- TFLint job
-- Terraform plan
-- Terraform apply
-- AWS VPC and subnet layout
-- Application Load Balancer
-- ALB target group with healthy ECS targets
-- ECS cluster
-- ECS service
-- Running ECS tasks
-- ECR repository and application image
-- RDS database
-- AWS Secrets Manager secret
-- Route 53 record
-- ACM certificate
-- Running application in the browser
+This means I do not need to store a permanent AWS access key and secret key in GitLab.
 
 ---
 
 ## Screenshots
 
-Create the directory:
+Screenshots for the project can be stored inside:
+
+```text
+docs/screenshots/
+```
+
+Create the folder with:
 
 ```bash
 mkdir -p docs/screenshots
 ```
 
-Then save the screenshots using clear names such as the examples below.
+Some useful screenshots to include are:
+
+- GitLab pipeline
+- Terraform validation
+- Terraform plan
+- Terraform apply
+- VPC and subnets
+- Application Load Balancer
+- ALB target group
+- ECS cluster
+- ECS service
+- Running ECS tasks
+- ECR repository
+- RDS database
+- Secrets Manager
+- Route 53
+- ACM certificate
+- Running application
 
 ### GitLab CI/CD Pipeline
 
@@ -688,43 +677,44 @@ Then save the screenshots using clear names such as the examples below.
 
 ---
 
-## Skills Demonstrated
+## Skills Used
 
-This project demonstrates hands-on experience with:
+This project gave me hands-on practice with:
 
-- Infrastructure as Code using Terraform
-- Reusable Terraform module design
-- Multi-environment Terraform repository structure
-- AWS VPC networking
-- Public and private subnet architecture
-- Three-tier application design
-- Security group design
+- Terraform
+- Terraform modules
+- Infrastructure as Code
+- AWS networking
+- VPCs and subnets
+- Security groups
 - Amazon ECS
-- Containerized workloads
+- Docker containers
 - Amazon ECR
 - Application Load Balancers
-- ALB target groups and health checks
+- Target groups
 - Amazon RDS
 - AWS Secrets Manager
 - IAM roles
-- Route 53 DNS
-- ACM HTTPS certificates
+- Route 53
+- ACM certificates
 - GitLab CI/CD
-- GitLab OIDC federation with AWS
+- GitLab OIDC with AWS
 - Terraform plan artifacts
-- Manual infrastructure deployment controls
-- Terraform formatting and validation
+- Manual deployment jobs
+- Terraform formatting
+- Terraform validation
 - TFLint
-- DevOps infrastructure automation
 
 ---
 
 ## Summary
 
-This project demonstrates the deployment of a containerized three-tier application infrastructure on AWS using Terraform and GitLab CI/CD.
+This project builds a containerized 3-tier application environment on AWS.
 
-Compared with a traditional EC2-based architecture, the application layer is deployed as containers through Amazon ECS, images are stored in Amazon ECR, and runtime application configuration is stored in AWS Secrets Manager.
+Terraform is used to create the infrastructure, ECS runs the application containers, ECR stores the Docker image, and RDS is used for the database.
 
-The Terraform code is organized into reusable modules and environment-specific configurations, while GitLab CI/CD provides automated validation and planning with controlled manual apply and destroy stages. GitLab authenticates to AWS through OIDC and temporary IAM role credentials.
+The Terraform code is split into modules and separate environment folders.
 
-The result is a modular Infrastructure as Code project that demonstrates AWS networking, container orchestration, database architecture, security, secrets management, HTTPS/DNS configuration, and CI/CD automation.
+GitLab CI/CD handles validation, planning, deployment, and destroy jobs. GitLab connects to AWS using OIDC, so the pipeline uses temporary AWS credentials instead of permanent access keys.
+
+The main purpose of this project was to get more hands-on experience with Terraform, AWS, containers, networking, and CI/CD.
