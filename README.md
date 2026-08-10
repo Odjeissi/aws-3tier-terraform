@@ -613,43 +613,27 @@ Some useful screenshots to include are:
 
 ### GitLab CI/CD Pipeline
 
-![GitLab CI/CD Pipeline](docs/screenshots/gitlab-pipeline.png)
+![GitLab CI/CD Pipeline](docs/screenshots/cicd_pipeline.png)
 
 ### Terraform Validation
 
-![Terraform Validation](docs/screenshots/terraform-validation.png)
+![Terraform Validation](docs/screenshots/validate_jobs.png)
 
-### Terraform Plan
+### Terraform Plan and Apply
 
-![Terraform Plan](docs/screenshots/terraform-plan.png)
-
-### Terraform Apply
-
-![Terraform Apply](docs/screenshots/terraform-apply.png)
+![Terraform Plan and Apply](docs/screenshots/plan_and_apply_job.png)
 
 ### VPC and Subnets
 
-![VPC and Subnets](docs/screenshots/vpc-subnets.png)
+![VPC and Subnets](docs/screenshots/vpc.png)
 
-### Application Load Balancer
+### Application Load Balancer and Target Group
 
-![Application Load Balancer](docs/screenshots/alb.png)
-
-### ALB Target Group
-
-![ALB Target Group](docs/screenshots/target-group.png)
+![Application Load Balancer and Target Group](docs/screenshots/alb.png)
 
 ### ECS Cluster
 
-![ECS Cluster](docs/screenshots/ecs-cluster.png)
-
-### ECS Service
-
-![ECS Service](docs/screenshots/ecs-service.png)
-
-### Running ECS Tasks
-
-![Running ECS Tasks](docs/screenshots/ecs-tasks.png)
+![ECS Cluster](docs/screenshots/ecs.png)
 
 ### ECR Repository
 
@@ -657,11 +641,11 @@ Some useful screenshots to include are:
 
 ### RDS Database
 
-![RDS Database](docs/screenshots/rds.png)
+![RDS Database](docs/screenshots/db.png)
 
 ### AWS Secrets Manager
 
-![AWS Secrets Manager](docs/screenshots/secrets-manager.png)
+![AWS Secrets Manager](docs/screenshots/SM.png)
 
 ### Route 53
 
