@@ -1,4 +1,4 @@
-# AWS 3-Tier Containerized Infrastructure with Terraform and GitLab CI/CD
+# AWS 3-Tier Infrastructure with Terraform and GitLab CI/CD
 
 ## Project Overview
 
