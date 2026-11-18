@@ -44,7 +44,7 @@ Application and database secrets are stored in AWS Secrets Manager.
 
 ### Architecture Flow
 
-![architecture](docs/screenshots/architecture.png.png)
+![architecture](docs/screenshots/architecture.png)
 
 ---
 
