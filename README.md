@@ -44,33 +44,7 @@ Application and database secrets are stored in AWS Secrets Manager.
 
 ### Architecture Flow
 
-```text
-                         Internet
-                            |
-                            v
-                        Route 53
-                            |
-                            v
-                     Application Load
-                        Balancer
-                       HTTPS / ACM
-                            |
-                            v
-                  +-------------------+
-                  |    ECS Service    |
-                  |   Private Subnets |
-                  +-------------------+
-                            |
-                            v
-                  +-------------------+
-                  |        RDS        |
-                  |   Private Subnets |
-                  +-------------------+
-
-ECR --------------------> ECS Tasks
-
-Secrets Manager ---------> ECS Tasks
-```
+![architecture](docs/screenshots/architecture.png.png)
 
 ---
 
